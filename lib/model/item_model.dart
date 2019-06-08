@@ -1,31 +1,60 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Product {
-  final String name;
-  final String category;
-  final String info;
-  final Timestamp time;
-  final bool done;
-  final DocumentReference reference;
-  // TODO: 만든 시간, 변경 시간 설정할 것 
+class Todo {
+  String id;
+  String name;
+  String info;
+  Timestamp time;
+  int day;
+  bool done;
+  DocumentReference reference;
+  DateTime dateTime;
+  String category;
 
+  Todo({
+    this.id,
+    this.name,
+    this.info,
+    this.time,
+    this.day,
+    this.done,
+    this.reference,
+    this.dateTime,
+    this.category
+  });
 
-  Product.fromMap(Map<String,dynamic> map, {this.reference})
-    : assert(map['Name'] != null),
-      assert(map['Category'] != null),
-      assert(map['Info'] != null),
-      assert(map['Date'] != null),
-      assert(map['Done'] != null),
-      name = map['Name'],
-      category = map['Category'],
-      info = map['Info'],
-      done = map['Done'],
-      time = map['Date'];
+  factory Todo.fromFireStore(DocumentSnapshot doc) {
+    Map data = doc.data;
 
-
-  Product.fromSnapshot(DocumentSnapshot snapshot)
-    : this.fromMap(snapshot.data, reference:snapshot.reference);
+    assert(doc.documentID != null);
+    assert(data['Name'] != null);
+    assert(data['Info'] != null);
+    assert(data['Time'] != null);
+    assert(data['Day'] != null);
+    assert(data['Done'] != null);
+    assert(doc.reference != null);
+    assert(data['Category'] != null);
+    return Todo(
+        id: doc.documentID,
+        name: data['Name'],
+        info: data['Info'],
+        time: data['Time'],
+        day: data['Day'],
+        done: data['Done'],
+        reference: doc.reference,
+        category: data['Category']
+    );
+  }
 
   @override
-  String toString() => "Product<$name$category:$info:$time:$done>";
+  String toString() => "TODO<$name:$time:$done:$category>";
+
+  Todo.toInsert(String name, String info, DateTime time, String category) :
+        id = "",
+        name = name,
+        info = info.isEmpty ? "" : info,
+        dateTime = time,
+        category = category.trim().length != 0 ? category : "",
+        day = int.parse(time.year.toString()+"${time.month.toString().length == 2 ? time.month.toString() : "0"+time.month.toString()}" + "${time.day.toString().length == 2? time.day.toString() : "0" + time.day.toString()}"),
+        done = false;
 }

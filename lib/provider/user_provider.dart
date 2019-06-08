@@ -1,0 +1,1 @@
+import 'package:firebase_auth/firebase_auth.dart';import 'dart:async';class UserService {  FirebaseAuth _auth;  String userId;  Future<String> user() async {    return await _auth.currentUser().then((user) => user.uid).catchError((error)=>error);  }}

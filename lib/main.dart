@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:finalexam/app.dart';
-void main() => runApp(FinalExam());
+import 'package:intl/date_symbol_data_local.dart';
+
+void main() {
+  initializeDateFormatting().then((_) => runApp(FinalExam()));
+}
 

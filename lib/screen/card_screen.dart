@@ -1,271 +1,373 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'package:finalexam/model/card_item_model.dart';
+import 'package:finalexam/screen/main_todo_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:finalexam/screen/detail_item_screen.dart';
+import 'package:finalexam/model/user_model.dart';
 import 'package:finalexam/model/item_model.dart';
+import 'package:finalexam/provider/todo_db.dart';
+import 'package:finalexam/widget/add_todo.dart';
+import 'package:finalexam/widget/insert_category_widget.dart';
+import 'package:finalexam/screen/calendar_screen.dart';
 
-var t  = DateTime.now();
 
-class MyHomePage extends StatefulWidget {
+
+class CardPage extends StatefulWidget {
+  final String user;
+  CardPage({this.user});
   @override
-  _MyHomePageState createState() => new _MyHomePageState();
+  _CardPageState createState() => new _CardPageState(user: this.user);
 }
 
-class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin{
+class _CardPageState extends State<CardPage> with TickerProviderStateMixin{
 
+
+  _CardPageState({this.user});
+  final db = TodoDataBaseService();
+  final auth = FirebaseAuth.instance;
+  List<Widget> cards;
   var appColors = [Color.fromRGBO(231, 129, 109, 1.0),Color.fromRGBO(99, 138, 223, 1.0),Color.fromRGBO(111, 194, 173, 1.0), Color.fromRGBO(133,199, 231, 1.0), Color.fromRGBO(126, 231, 109, 1.0), Color.fromRGBO(241, 109, 109, 1.0),Color.fromRGBO(231,109,219,1.0)];
   var cardIndex = 0;
   ScrollController scrollController;
   var currentColor = Color.fromRGBO(231, 129, 109, 1.0);
-
-  var cardsList = [CardItemModel("Personal", Icons.account_circle, 9, 0.83),CardItemModel("Work", Icons.work, 12, 0.24),CardItemModel("Home", Icons.home, 7, 0.32)];
+  int categoryLength ;
+  final String user;
 
   AnimationController animationController;
   ColorTween colorTween;
   CurvedAnimation curvedAnimation;
+  TextEditingController nameController = TextEditingController();
   int weekCheck;
+  DateTime date;
+  Animation<int> alpha ;
 
   @override
   void initState() {
     super.initState();
     scrollController = new ScrollController();
+//    weekdayV1 = weekdayValue1[DateTime.now().weekday-1];
     weekCheck = DateTime.now().weekday % 7 - 1;
+    date = DateTime.now();
+    categoryLength = 2;
   }
 
-  Widget _addCard(BuildContext context) {
-    return InkWell(
-      onTap: () =>  Navigator.of(context).pushNamed('/add'),
-          child: Card(
-        child: Container(
-          width: 250.0,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Icon(Icons.add, color: appColors[0]),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                      child: Icon(Icons.add_circle,color: appColors[0],)
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                      child: Text("add", style: TextStyle(fontSize: 28.0),),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0)
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
   }
+
+
 
   Widget _buildBody(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: Firestore.instance.collection('Product').orderBy('Day',descending: false).snapshots(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: Firestore.instance.collection('Users').document(user).collection("user").document("user").snapshots(),
       builder: (context,snapshot) {
-        if (!snapshot.hasData) return LinearProgressIndicator();
-        else{
-          if(!snapshot.hasData){
-            return _addCard(context);
-          }
-          return _buildList(context,snapshot.data.documents);
-        }
+        if (snapshot.data.exists) return _buildList(context, snapshot.data);
+        else if (!snapshot.hasData) return LinearProgressIndicator();
+        else return  Container();
       },
     );
   }
 
-  Widget _buildList(BuildContext context, List<DocumentSnapshot>docs) {
-    return ListView(
-      physics: NeverScrollableScrollPhysics(),
-      controller: scrollController,
-      scrollDirection: Axis.horizontal,
-      children: docs.map((doc) => _buildCardItem(context, doc)).toList(),
-    );
+  Widget _buildList(BuildContext context, DocumentSnapshot docs) {
+    CurrentUser user = CurrentUser.fromFirestore(docs);
+    if(user.categories != null){
+      categoryLength = user.categories.length;
+      return Container(
+        child: ListView(
+            physics: NeverScrollableScrollPhysics(),
+            controller: scrollController,
+            scrollDirection: Axis.horizontal,
+            children:
+              user.categories.map((doc) => _buildCardItem(context, doc)).toList()
+
+        ),
+      );
+    }
+    return Container();
   }
 
-  Widget _buildCardItem(BuildContext context, DocumentSnapshot data) {
-     return GestureDetector(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Card(
-              child: Container(
-                width: 250.0,
+  Widget _buildCardItem(BuildContext context, String category) {
+    return GestureDetector(
+      child: Card(
+        child: Container(
+          width: MediaQuery.of(context).size.width*0.9,
+
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8.0,10.0,0,20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    // Padding(
-                    //   padding: const EdgeInsets.all(8.0),
-                    //   child: Row(
-                    //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //     children: <Widget>[
-                    //       Icon(cardsList[position].icon, color: appColors[position],),
-                    //       Icon(Icons.more_vert, color: Colors.grey,),
-                    //     ],
-                    //   ),
-                    // ),
                     Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: <Widget>[
+                          Text("$category Tasks", style: TextStyle(color: currentColor,fontSize: 20.0,),),
+                          Spacer(),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                            child: Text("${data.documentID}day Tasks", style: TextStyle(color: Colors.grey),),
-                          ),
-                          // Padding(
-                          //   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                          //   child: Text("${data.metadata}", style: TextStyle(fontSize: 28.0),),
-                          // ),
-                          StreamBuilder<QuerySnapshot>(
-                            stream: Firestore.instance.collection('Product').document(data.documentID).collection(data.documentID).snapshots(),
-                            builder: (context,snapshot) {
-                              if (!snapshot.hasData) return LinearProgressIndicator();
-                              else{
-                                if(snapshot.data.documents.length == 0){
-                                  return Text("TODO");
-                                }
-                                return Column(
-                                  children : snapshot.data.documents.map((doc) => _buildTodoList(context, doc)).toList()
-                                );
-                              }
-                            },
+                            padding: const EdgeInsets.only(right: 18.0),
+                            child:
+                            category.compareTo("All") ==0 || category.compareTo("Scheduled") == 0 ? Container():IconButton(
+                              icon: Icon(Icons.delete,color: Colors.deepOrangeAccent,),
+                              onPressed: () => TodoDataBaseService().categoryDelete(category),
+                            ),
+
                           )
                         ],
+                      ),
+                    ),
+                    Container(
+                      height: MediaQuery.of(context).size.height*0.60,
+                      child: SingleChildScrollView(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: category.compareTo("All") == 0 ? Firestore.instance.collection('Users').document(user).collection('Todos').where('Done', isEqualTo: false).snapshots() : Firestore.instance.collection('Users').document(user).collection('Todos').where('Done', isEqualTo: false).where("Category",isEqualTo: category).snapshots(),
+                          builder: (context,snapshot) {
+                            if (!snapshot.hasData) return LinearProgressIndicator();
+                            else{
+                              if(snapshot.data.documents.length == 0){
+                                return Container();
+                              }
+                              return Column(
+                                  children : snapshot.data.documents.map((doc) => _buildTodoList(context, doc)).toList()
+                              );
+                            }
+                          },
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0)
-              ),
-            ),
+              Divider(),
+            ],
           ),
-          onHorizontalDragEnd: (details) {
+        ),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+        ),
+      ),
 
-            animationController = AnimationController(vsync: this, duration: Duration(milliseconds: 500));
-            curvedAnimation = CurvedAnimation(parent: animationController, curve: Curves.fastOutSlowIn);
-            animationController.addListener(() {
-              setState(() {
-                currentColor = colorTween.evaluate(curvedAnimation);
-              });
-            });
+      onHorizontalDragEnd: (details) {
+        animationController = AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+        curvedAnimation = CurvedAnimation(parent: animationController, curve: Curves.fastOutSlowIn);
+        animationController.addListener(() {
+          setState(() {
+//            currentColor = colorTween.evaluate(curvedAnimation);
+            alpha = IntTween(begin: cardIndex, end: categoryLength).animate(curvedAnimation);
+            currentColor = appColors[cardIndex % appColors.length +1];
+          });
+        });
 
-            if(details.velocity.pixelsPerSecond.dx > 0) {
-              if(cardIndex>0) {
-                cardIndex--;
-                colorTween = ColorTween(begin:currentColor,end:appColors[cardIndex]);
-              }
-            }else {
-              if(cardIndex<appColors.length) {
-                cardIndex++;
-                colorTween = ColorTween(begin: currentColor,
-                    end: appColors[cardIndex]);
-              }
-            }
-            setState(() {
-              scrollController.animateTo((cardIndex)*256.0, duration: Duration(milliseconds: 500), curve: Curves.fastOutSlowIn);
-            });
+        if(details.velocity.pixelsPerSecond.dx > 0) {
+          if(cardIndex>0) {
+            cardIndex--;
+//            colorTween = ColorTween(begin:currentColor,end:appColors[cardIndex]);
+          }
+        }else {
+          if(cardIndex<categoryLength-1) {
+            cardIndex++;
+//            colorTween = ColorTween(begin: currentColor,
+//                end: appColors[(cardIndex % appColors.length) + 1]);
+          }
+        }
+        setState(() {
+          scrollController.animateTo((cardIndex)*MediaQuery.of(context).size.width*0.92, duration: Duration(milliseconds: 300), curve: Curves.fastOutSlowIn);
+        });
 
-            colorTween.animate(curvedAnimation);
+//        colorTween.animate(curvedAnimation);
 
-            animationController.forward( );
+        animationController.forward( );
 
-          },
-        );
+      },
+    );
   }
-  // Future _changeDone(BuildContext context, Product product) async {
-  //   DocumentReference doc = Firestore.instance.collection('Product').
-  // }
 
   Widget _buildTodoList(BuildContext context, DocumentSnapshot doc) {
-    final product = Product.fromSnapshot(doc);
-    return ListTile(
-      title: Text(product.name),
+    final todo = Todo.fromFireStore(doc);
+    return InkWell(
+      child: Container(
+        padding: EdgeInsets.only(left: 15.0),
+        alignment: Alignment.centerLeft,
+        child: Row(
+
+          children: <Widget>[
+            MaterialButton(
+              onPressed: () => db.doneButtonTodo(todo.id, todo.done),
+              child: Checkbox(
+                  value: todo.done,
+                  onChanged: null
+              ),
+            ),
+            Text(
+              todo.name,
+              style: TextStyle(
+                  decoration: todo.done ? TextDecoration.lineThrough : TextDecoration.none,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.0,
+                  color: Colors.black87
+              ),
+            ),
+            ],
+        )
+      ),
+      onTap: () =>
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) =>
+                  DetailItemScreen(
+                    id:todo.id, name : todo.name, info : todo.info, pickedDay: todo.time.toDate(), uid: user, pickedCategory: todo.category,))),
     );
   }
 
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-      backgroundColor: currentColor,
-      appBar: new AppBar(
-        title: new Text("TODO", style: TextStyle(fontSize: 16.0),),
-        backgroundColor: currentColor,
-        centerTitle: true,
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.search),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: new Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0.0,30.0,0.0,12.0),
+                        child: Text(
+                            "해야 할 목록",
+                            style: TextStyle(fontSize: 30.0,)
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                    height: MediaQuery.of(context).size.height*0.75,
+                    width: MediaQuery.of(context).size.width*0.9,
+                    child: _buildBody(context)
+                )
+
+              ],
+            ),
+          ),
+        ),
+      ),
+
+      bottomSheet: _deactivateBottomWidget(context),
+      floatingActionButton:  Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          FloatingActionButton.extended(
+            heroTag: "할 일 추가",
+              backgroundColor: currentColor,
+              onPressed: () => _todoInsert(),
+              label: Row(
+                children: <Widget>[
+                  Icon(Icons.add),
+                  Text("할 일 추가")
+                ],
+              )
+          ),
+          SizedBox( height: MediaQuery.of(context).size.height*0.01),
+          FloatingActionButton.extended(
+            heroTag: "카테고리 추가",
+              backgroundColor: currentColor,
+              onPressed: () => _categoryInsert(),
+              label: Row(
+                children: <Widget>[
+                  Icon(Icons.add_to_photos),
+                  Text("카테고리 추가")
+                ],
+              )
           ),
         ],
-        elevation: 0.0,
-      ),
-      body: new Center(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
+
+      ), floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _deactivateBottomWidget(BuildContext context) {
+    return Material(
+      shadowColor: Colors.black,
+      elevation: 70.0,
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height*0.1,
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.black12,width: 1.8,style: BorderStyle.solid)),
+//                borderRadius: BorderRadius.only(topLeft: Radius.circular(20.0), topRight: Radius.circular(20.0)),
+        ),
+        child: Row(
           children: <Widget>[
-            // Row(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 64.0, vertical: 32.0),
-              child: Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Icon(Icons.account_circle, size: 45.0, color: Colors.white,),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0.0,16.0,0.0,12.0),
-                      child: Text("Hello, User.", style: TextStyle(fontSize: 30.0, color: Colors.white, fontWeight: FontWeight.w400),),
-                    ),
-                    Text("여기는 total, done, not yet 부분", style: TextStyle(color: Colors.white))
-                    // Text("Looks like feel good.", style: TextStyle(color: Colors.white),),
-                    // Text("You have 3 tasks to do today.", style: TextSrtyle(color: Colors.white,),),
-                  ],
+              padding: const EdgeInsets.only(left: 9.0),
+              child: IconButton(
+                onPressed: () =>  Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => TodoMainScreen(user: user,) ), (Route<dynamic> route) => false),
+                icon: Icon(
+                  Icons.dehaze,
+                  color: Colors.black,
                 ),
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 64.0, vertical: 16.0),
-                  child: Text(DateTime.now().month.toString() + DateTime.now().day.toString() + DateTime.now().year.toString(), style: TextStyle(color: Colors.white),),
+            Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(right: 9.0),
+              child: IconButton(
+                onPressed: () =>Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => CalendarScreen(user: user,) ), (Route<dynamic> route) => false),
+                icon: Icon(
+                  Icons.calendar_today,
+                  color: Colors.black,
                 ),
-                Container(
-                  height: 350.0,
-                  child: _buildBody(context)
-                ),
-              ],
+              ),
             )
           ],
         ),
       ),
-      drawer: Drawer(),
     );
   }
+
+
+  Future<void> _todoInsert () async {
+    return showModalBottomSheet(
+        isScrollControlled: true,
+        context: context,
+        builder: (BuildContext context){
+          return Material(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                  child: NewTodoInsertWidget(user: user,)
+              ),
+            ),
+          );
+        });
+  }
+  Future<void> _categoryInsert () async {
+    return showModalBottomSheet(
+        isScrollControlled: true,
+        context: context,
+        builder: (BuildContext context){
+          return Material(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container
+                (
+                  child: NewCategoryInsertWidget()
+              ),
+
+            ),
+          );
+        });
+  }
+
 }
+
