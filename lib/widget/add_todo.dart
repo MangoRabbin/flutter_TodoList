@@ -177,17 +177,17 @@ class _NewTodoInsertWidgetState extends State<NewTodoInsertWidget> {
                     ),
                     IconButton(
                       icon: Icon(
-                        Icons.calendar_today,
-                      ),
-                      color: buttonTimeState ? Colors.lightBlueAccent :Colors.blueGrey,
-                      onPressed: () => setState(() => buttonTimeState = true),
-                    ),
-                    IconButton(
-                      icon: Icon(
                         Icons.category,
                       ),
                       color: buttonCategoryState ? Colors.lightBlueAccent :Colors.blueGrey,
                       onPressed: () => setState(() => buttonCategoryState = true),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.calendar_today,
+                      ),
+                      color: buttonTimeState ? Colors.lightBlueAccent :Colors.blueGrey,
+                      onPressed: () => setState(() => buttonTimeState = true),
                     ),
                     SizedBox(width: MediaQuery.of(context).size.width*0.2,),
                     buttonTimeState ?Container() : FlatButton(

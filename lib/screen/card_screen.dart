@@ -194,26 +194,35 @@ class _CardPageState extends State<CardPage> with TickerProviderStateMixin{
       child: Container(
         padding: EdgeInsets.only(left: 15.0),
         alignment: Alignment.centerLeft,
-        child: Row(
-
+        child: Column(
           children: <Widget>[
-            MaterialButton(
-              onPressed: () => db.doneButtonTodo(todo.id, todo.done),
-              child: Checkbox(
-                  value: todo.done,
-                  onChanged: null
-              ),
+            Row(
+              children: <Widget>[
+                MaterialButton(
+                  onPressed: () => db.doneButtonTodo(todo.id, todo.done),
+                  child: Checkbox(
+                      value: todo.done,
+                      onChanged: null
+                  ),
+                ),
+                Text(
+                  "${todo.name}",
+                  style: TextStyle(
+                      decoration: todo.done ? TextDecoration.lineThrough : TextDecoration.none,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.0,
+                      color: Colors.black87
+                  ),
+                ),
+                Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(right:10.0),
+                  child: Text("${todo.time.toDate().month}월 ${todo.time.toDate().day}일",style: TextStyle(color: Colors.grey,fontSize: 12.0),),
+                )
+                ],
             ),
-            Text(
-              todo.name,
-              style: TextStyle(
-                  decoration: todo.done ? TextDecoration.lineThrough : TextDecoration.none,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.0,
-                  color: Colors.black87
-              ),
-            ),
-            ],
+            Divider()
+          ],
         )
       ),
       onTap: () =>
